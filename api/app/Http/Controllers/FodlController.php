@@ -26,7 +26,6 @@ class FodlController extends ApiController
 
     public function retrieve(Request $request)
     {
-        // To be removed pa ang mga unnecessary fields
         $allowedColumns = [
             'fodl_id',
             'fg_code',
@@ -126,8 +125,6 @@ class FodlController extends ApiController
             $archivedFodlData = $fodl->toArray();
 
             Fodl::on('archive_mysql')->create($archivedFodlData);
-
-            // $files = File::whereJsonContains('settings->fodls', ['fodl_id' => $fodl_id])->get();
             $files = File::where('file_id', $file_id)->get();
 
             foreach ($files as $file) {
@@ -293,9 +290,6 @@ class FodlController extends ApiController
                 }
             }
 
-            FinishedGood::whereNotIn('fg_code', $fgCodes)
-                ->update(['fodl_id' => null]);
-
             \DB::commit();
 
             $this->status = 200;
@@ -328,12 +322,18 @@ class FodlController extends ApiController
 
         try {
             $fodls = Fodl::whereIn('fodl_id', $fodlIds)->get();
+            $finishedGoodsWithFodlId = \DB::table('finished_goods')
+            ->whereIn('fodl_id', $fodlIds)
+            ->get();
+
+            if (!$finishedGoodsWithFodlId->isEmpty()) {
+                $this->status = 400;
+                return $this->getResponse("Another file is depending on this sheet, please delete the other file to modify this!");
+            }
 
             foreach ($fodls as $fodl) {
                 $archivedFodlData = $fodl->toArray();
                 Fodl::on('archive_mysql')->create($archivedFodlData);
-
-                // $files = File::whereJsonContains('settings->fodls', ['fodl_id' => $fodl_id])->get();
                 $files = File::where('file_id', $file_id)->get();
 
                 foreach ($files as $file) {
@@ -358,10 +358,6 @@ class FodlController extends ApiController
                 }
             }
 
-            \DB::table('finished_goods')
-                ->whereIn('fodl_id', $fodlIds)
-                ->update(['fodl_id' => null]);
-
             Fodl::whereIn('fodl_id', $fodlIds)->delete();
 
             \DB::commit();
@@ -382,10 +378,16 @@ class FodlController extends ApiController
         try {
 
             $fodls = Fodl::whereIn('fodl_id', $fodlIds)->get();
+            $finishedGoodsWithFodlId = \DB::table('finished_goods')
+                ->whereIn('fodl_id', $fodlIds)
+                ->get();
 
             foreach ($fodls as $fodl) {
                 $archivedFodlData = $fodl->toArray();
-                Fodl::on('archive_mysql')->create($archivedFodlData);
+
+                if($finishedGoodsWithFodlId->isEmpty()){
+                    Fodl::on('archive_mysql')->create($archivedFodlData);
+                }
 
                 $files = File::where('file_id', $file_id)->get();
 
@@ -410,11 +412,10 @@ class FodlController extends ApiController
                 }
             }
 
-            \DB::table('finished_goods')
-                ->whereIn('fodl_id', $fodlIds)
-                ->update(['fodl_id' => null]);
+            if($finishedGoodsWithFodlId->isEmpty()){
+                Fodl::whereIn('fodl_id', $fodlIds)->delete();
+            }
 
-            Fodl::whereIn('fodl_id', $fodlIds)->delete();
             \DB::commit();
 
             return [

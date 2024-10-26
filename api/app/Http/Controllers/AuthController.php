@@ -26,7 +26,7 @@ class AuthController extends ApiController
                     'email_address' => 'required|email|unique:users',
                     'password' => 'required|min:8|max:16|regex:/^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$/',
                     'department' => 'required',
-                    'phone_number' => 'required|regex:/^(\+?[0-9]{1,4})?\s?-?[0-9]{10}$/',
+                    'phone_number' => 'required|regex:/^\+63\s?9\d{9}$/',
                     'position' => 'required',
                     'sys_role' => 'required|json',
                     'display_picture' => 'required|image|mimes:jpeg,png,jpg|max:2048',
@@ -44,9 +44,7 @@ class AuthController extends ApiController
             $validatedData['sys_role'] = $request->sys_role;
 
             $user = User::create($validatedData);
-            // $accessToken = $user->createToken('authToken')->plainTextToken;
 
-            //Profile picture upload
             if ($request->hasFile('display_picture')) {
                 try {
                     $path = $request->file('display_picture')->store('profile_pictures', 'public');
@@ -58,9 +56,9 @@ class AuthController extends ApiController
                 }
 
             $this->status = 200;
-            // $this->response['token'] = $accessToken;
             return $this->getResponse("User created successfully!");
         } catch (\Throwable $th) {
+            Log::info($th->getMessage());
             $this->status = $th->getCode() ?: 500;
             $this->response['message'] = $th->getMessage();
             return $this->getResponse();

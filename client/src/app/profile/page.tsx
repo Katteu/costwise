@@ -8,13 +8,14 @@ import Link from "next/link";
 import UserInformation from '@/components/pages/profile/UserInformation';
 import SendEmailDialog from "@/components/modals/SendEmailDialog";
 import background from '@/assets/account-profile-bg.png';
-import { useUserContext } from "@/contexts/UserContext";
+import { User, useUserContext } from "@/contexts/UserContext";
 import api from "@/utils/api";
 import { FaUserCircle } from "react-icons/fa";
 import { removeTokens } from "@/utils/removeTokens";
 import fs from 'fs/promises';
 import path from 'path';
 import config from "@/server/config";
+import Loader from "@/components/loaders/Loader";
 
 interface UserProps {
     fName: string;
@@ -27,15 +28,17 @@ interface UserProps {
     employeeNum: string;
     role: string;
     display_picture: string;
+    position: string;
 }
 
 const ProfilePage = () => {
     const { isOpen } = useSidebarContext();
-    const { currentUser } = useUserContext();
     const [userAcc, setUserAcc] = useState<UserProps | null>(null);
     const [userInfo, setuserInfo] = useState(false);
     const [dialog, setDialog] = useState(false);
+    const { currentUser, setCurrentUser } = useUserContext();
     const [profilePicture, setProfilePicture] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -43,6 +46,7 @@ const ProfilePage = () => {
             try {
                 const user = await api.get('/user');
                 const userInformation = {
+                    user_id: user.data.user_id,
                     fName: user.data.first_name,
                     mName: user.data.middle_name,
                     lName: user.data.last_name,
@@ -52,11 +56,13 @@ const ProfilePage = () => {
                     dept: user.data.department,
                     employeeNum: user.data.employee_number,
                     role: user.data.sys_role,
-                    display_picture: user.data.display_picture
+                    display_picture: user.data.display_picture,
+                    position: user.data.position
                 }
 
                 setUserAcc(userInformation);
                 setProfilePicture(userInformation.display_picture);
+                setIsLoading(false);
             } catch (error: any) {
                 console.error('Error fetching user data:', error);
             }
@@ -78,6 +84,12 @@ const ProfilePage = () => {
                 });
 
                 if (response.data.status === 'success') {
+                    const updatedUser = {
+                        ...currentUser,
+                        displayPicture: response.data.display_picture
+                    };
+                    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                    setCurrentUser(updatedUser as User);
                     setProfilePicture(response.data.display_picture);
                 } else {
                     console.error('Error updating profile picture:', response.data.message);
@@ -95,6 +107,7 @@ const ProfilePage = () => {
     const handleLogout = async () => {
         await removeTokens();
         localStorage.removeItem('accessToken');
+        localStorage.removeItem('currentUser');
         localStorage.clear();
         window.location.href = '/logout';
     };
@@ -141,14 +154,14 @@ const ProfilePage = () => {
                             className="hidden"
                         />
                         <button
-                            className="w-10 h-10 absolute right-0 bottom-0 bg-[#A60000] rounded-full border-3 border-white p-[0.3rem] text-white text-[1.6em]"
+                            className="hover:bg-primary w-10 h-10 absolute right-0 bottom-0 bg-[#A60000] rounded-full border-3 border-white p-[0.3rem] text-white text-[1.6em]"
                             onClick={handleCameraClick}
                         >
                             <IoCamera />
                         </button>
                         <div className='w-28 h-28 bg-red-200 border-4 border-[#A60000] rounded-full overflow-hidden'>
                             {profilePicture ? (
-                                <div 
+                                <div
                                     className="w-full h-full object-cover"
                                     style={{
                                         backgroundImage: `url(${getProfilePictureUrl(profilePicture) || '/default-profile.png'})`,
@@ -165,8 +178,22 @@ const ProfilePage = () => {
                         </div>
                     </div>
                     <div>
-                        <div className='text-[25px] 2xl:text-[30px] font-semibold'> {userAcc?.fName} {userAcc?.lName}</div>
-                        <div className='text-[22px] 2xl:text-[24px]'> {userAcc?.role} </div>
+                        {isLoading ?
+                            <>
+                                <div className="w-[120px]">
+                                    <Loader className="h-[25px] mb-[10px]" />
+                                </div>
+                                <div className="w-[75px]">
+                                    <Loader className="h-[19px]" />
+                                </div>
+                            </>
+                            :
+                            <>
+                                <div className='text-[25px] 2xl:text-[30px] font-semibold'> {userAcc?.fName} {userAcc?.lName}</div>
+                                <div className='text-[22px] 2xl:text-[24px]'> {userAcc?.position} </div>
+                            </>
+                        }
+
                         <button className="text-[22px] 2xl:text-[24px] text-primary cursor-pointer hover:opacity-65"
                             onClick={handleLogout}>
                             Logout
@@ -174,7 +201,7 @@ const ProfilePage = () => {
                     </div>
                 </div>
 
-                <UserInformation isOpen={isOpen} userAcc={userAcc} />
+                <UserInformation isOpen={isOpen} userAcc={userAcc} isLoading={isLoading} />
             </div>
         </div>
     );

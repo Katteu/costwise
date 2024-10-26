@@ -10,9 +10,9 @@ use App\Http\Controllers\FodlController;
 use App\Http\Controllers\FormulationController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\CostCalcController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
@@ -22,6 +22,7 @@ use App\Http\Controllers\ModelController;
 use App\Http\Controllers\FGController;
 use App\Http\Controllers\PredictionController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\ReleaseNoteController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -39,6 +40,8 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 
     Route::prefix('/user')->group(function () {
         Route::get('', [UserController::class, 'getCurrentUser']);
+        Route::get('retrieve', [UserController::class, 'retrieveUser']);
+        Route::get('roles', [UserController::class, 'getUserRoles']);
         Route::post('update/{id}', [UserController::class, 'updateUser']);
         Route::delete('archive/{id}', [UserController::class, 'archiveUser']);
         Route::put('update', [UserController::class, 'editUserInfo']);
@@ -56,6 +59,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
 
     Route::prefix('/finished_goods')->group(function () {
         Route::get('retrieve_all', [FinishedGoodController::class, 'retrieveAll']);
+        Route::get('retrieve_allFG', [FinishedGoodController::class, 'retrieveAllFGData']);
         Route::get('retrieve', [FinishedGoodController::class, 'retrieve']);
         Route::get('retrieve_first', [FinishedGoodController::class, 'retrieveFirst']);
         Route::get('retrieve_batch', [FinishedGoodController::class, 'retrieveBatch']);
@@ -118,6 +122,7 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
     Route::prefix('/auditlogs')->group(function () {
         Route::get('', [AuditLogController::class, 'getAuditLogs']);
         Route::post('logsaudit', [AuditLogController::class, 'updateAuditLogs']);
+        Route::post('export', [AuditLogController::class, 'export']);
     });
 
     Route::prefix('/notifications')->group(function () {
@@ -150,24 +155,35 @@ Route::group(['middleware' => ['auth:sanctum']], function () {
         Route::post('export', [CostCalcController::class, 'export']);
     });
 
-    Route::prefix('/training')->group(function () {
-        Route::post('/upload', [FileController::class, 'uploadTrainingData']);
-        Route::get('/data', [FileController::class, 'getData']);
-    });
-
-    Route::prefix('/fg')->group(function () {
-        Route::post('/upload', [FGController::class, 'uploadFG']);
-        Route::get('/data', [FGController::class, 'getFGData']);
-    });
-
-    Route::prefix('/prediction')->group(function () {
-        Route::post('/upload', [PredictionController::class, 'uploadPrediction']);
-        Route::post('/data', [PredictionController::class, 'getPrediction']);
-    });
 
     Route::prefix('/article')->group(function () {
-        // Route::post('/upload', [ArticleController::class, 'uploadArticle']);
-        Route::post('/data', [ArticleController::class, 'getArticle']);
-        Route::post('/update', [ArticleController::class, 'updateArticle']);
+        Route::post('upload', [ArticleController::class, 'uploadArticle']);
+        Route::get('all', [ArticleController::class, 'getAll']);
+        Route::post('data', [ArticleController::class, 'getArticle']);
+        Route::post('update', [ArticleController::class, 'updateArticle']);
     });
+
+    Route::prefix('/system')->group(function () {
+        Route::get('retrieve_data', [SystemController::class, 'retrieveData']);
+    });
+
+    Route::prefix('/release_note')->group(function () {
+        Route::get('retrieve', [ReleaseNoteController::class, 'retrieve']);
+        Route::get('retrieve_all', [ReleaseNoteController::class, 'retrieveAll']);
+        Route::post('create', [ReleaseNoteController::class, 'createNote']);
+        Route::post('update', [ReleaseNoteController::class, 'updateNote']);
+        Route::post('delete', [ReleaseNoteController::class, 'deleteNote']);
+    });
+});
+
+Route::prefix('/training')->group(function () {
+    Route::post('upload', [FileController::class, 'uploadTrainingData']);
+    Route::get('data', [FileController::class, 'getData']);
+    Route::post('update', [FileController::class, 'updateTrainingData']);
+});
+
+Route::prefix('/prediction')->group(function () {
+    Route::post('/upload', [PredictionController::class, 'uploadPrediction']);
+    Route::post('/data', [PredictionController::class, 'getPrediction']);
+    Route::post('/current_data', [PredictionController::class, 'getCurrentPrediction']);
 });

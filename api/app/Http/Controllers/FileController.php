@@ -40,17 +40,15 @@ class FileController extends ApiController
     private $fgCode;
     private $formulationCode;
     private $emulsion;
-
-    // For Transactional Files
     private $trMaterialId = null;
     private $trFgId = null;
 
-    // Handle Errors Gracefully MAyolskie!
-    // Basic CRUD
     public function retrieveAll()
     {
         try {
-            $allRecords = File::orderBy('created_at', 'desc')->get();
+            $allRecords = File::whereIn('file_type', ['master_file', 'transactional_file'])
+                              ->orderBy('created_at', 'desc')
+                              ->get();
             $this->status = 200;
             $this->response['data'] = $allRecords;
             return $this->getResponse();
@@ -95,7 +93,7 @@ class FileController extends ApiController
     {
         $allowedColumns = ['file_id'];
         $col = $request->input('col');
-        $value = $request->input('value'); //expected that this is file_id
+        $value = $request->input('value');
 
         if (!in_array($col, $allowedColumns)) {
             $this->status = 400;
@@ -128,7 +126,6 @@ class FileController extends ApiController
                 } else if ($record->file_type == 'master_file') {
                     $settings = json_decode($record->settings, true);
 
-                    // Assuming that what is on the formulations, are on the material sheets
                     if (isset($settings['bom_ids'])) {
                         foreach ($settings['bom_ids'] as $bomId) {
                             $this->deleteFormulationByBOM($bomId);
@@ -185,7 +182,6 @@ class FileController extends ApiController
         }
     }
 
-    // Importing Process
     public function upload(Request $request)
     {
         $file = $request->file('file');
@@ -242,7 +238,6 @@ class FileController extends ApiController
             $worksheets[$worksheet->getTitle()] = $worksheet;
         }
 
-        // dump(array_keys($worksheets));
         if ($uploadType == 'master') {
             $sheetProcessingOrder = [
                 'FODL Cost' => 'processFODLCostSheet',
@@ -675,41 +670,6 @@ class FileController extends ApiController
             }
         }
     }
-    // private function calculateLeastCost($file)
-    // {
-    //     $settings = json_decode($file['settings'], true);
-
-    //     $bomIds = $settings['bom_ids'] ?? [];
-    //     $leastCost = PHP_FLOAT_MAX;
-
-    //     foreach ($bomIds as $bomId) {
-    //         $bom = Bom::findOrFail($bomId);
-    //         $formulations = json_decode($bom->formulations,true);
-
-
-    //         foreach ($formulations as $formulationId) {
-    //             $formulation = Formulation::findOrFail($formulationId);
-    //             $rmCost = $this->calculateFormulationCost($formulation);
-    //             $finishedGood = FinishedGood::firstOrCreate(
-    //                 ['fg_id' => $formulation->fg_id],
-    //             );
-
-    //             $finishedGood->update(['rm_cost' => $rmCost]);
-    //             $leastCost = min($leastCost, $rmCost);
-    //         }
-    //     }
-
-    //     $leastCostFormulation = Formulation::whereIn('formulation_id', $formulations)
-    //         ->whereHas('finishedGood', function ($query) use ($leastCost) {
-    //             $query->where('rm_cost', $leastCost);
-    //         })
-    //         ->first();
-
-    //     if ($leastCostFormulation) {
-    //         $leastCostFinishedGood = $leastCostFormulation->finishedGood;
-    //         $leastCostFinishedGood->update(['is_least_cost' => true]);
-    //     }
-    // }
 
     private function calculateFormulationCost($formulation)
     {
@@ -731,61 +691,6 @@ class FileController extends ApiController
         return $totalCost;
     }
 
-    // private function processSummarySheet($data)
-    // {
-    //     $monthYearStr = $data[1];
-    //     $monthYearInt = DateHelper::convertMonthYearStrToInt($monthYearStr[0]);
-    //     $headers = $data[3];
-
-    //     unset($data[0], $data[1], $data[2], $data[3]);
-
-    //     $fgIds = [];
-    //     $fodlIds = [];
-
-    //     foreach ($data as $row) {
-    //         var_dump($row);
-    //         $rowData = [];
-    //         foreach ($headers as $column => $header) {
-    //             $rowData[$header] = $row[$column];
-    //         }
-
-    //         $itemCode = $rowData['Item Code'] ?? null;
-    //         $itemDescription = $rowData['Item Description'] ?? null;
-    //         $rmCost = $rowData['RM Cost'] ?? 0;
-    //         $factoryOverhead = $rowData['Factory Overhead'] ?? 0;
-    //         $directLabor = $rowData['Direct Labor'] ?? 0;
-    //         $total = $rowData['TOTAL'] ?? 0;
-
-    //         $fodl = ControllerHelper::findOrCreateFODL($monthYearInt, $factoryOverhead, $directLabor);
-
-    //         $fodlId = $fodl->fodl_id;
-
-    //         // TO BE CHANGED!
-    //         $finishedGood = FinishedGood::create([
-    //             'fg_code' => $itemCode,
-    //             'fg_desc' => $itemDescription,
-    //             'rm_cost' => $rmCost,
-    //             'total_cost' => $total,
-    //             'monthYear' => $monthYearInt,
-    //             'fodl_id' => $fodlId,
-    //         ]);
-
-    //         $fgIds[] = $finishedGood->fg_id;
-    //         $fodlIds[] = $fodlId;
-    //     }
-
-    //     $fodlIds = array_values(array_unique($fodlIds));
-    //     if ($this->fileModel) {
-    //         $settings = json_decode($this->fileModel['settings'], true);
-    //         $settings['monthYear'] = $monthYearInt;
-    //         $settings['fg_ids'] = $fgIds;
-    //         $this->fileModel['settings'] = json_encode($settings);
-    //     }
-    // }
-
-
-
-    // EXPORTING PROCESS
     public function export(Request $request)
     {
         try {
@@ -820,7 +725,7 @@ class FileController extends ApiController
     {
         try {
             $files = File::all();
-    
+
             if ($files->isEmpty()) {
                 \Log::info('No files to export');
                 return response()->json(['message' => 'No files to export'], 404);
@@ -838,7 +743,7 @@ class FileController extends ApiController
             if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) {
                 throw new \RuntimeException("Unable to create zip file");
             }
-    
+
             foreach ($files as $file) {
                 $spreadsheet = new Spreadsheet();
 
@@ -863,7 +768,7 @@ class FileController extends ApiController
                 unset($spreadsheet);
                 gc_collect_cycles();
             }
-    
+
             $zip->close();
 
             return response()->download($zipFilePath, $zipFileName, [
@@ -1299,6 +1204,47 @@ class FileController extends ApiController
 
         return $parsedCostData;
     }
+
+    public function updateTrainingData(Request $request)
+    {
+        try {
+            $validator = Validator::make(
+                $request->all(),
+                [
+                    'settings' => 'required',
+                ]
+            );
+
+            if ($validator->fails()) {
+                $this->status = 401;
+                $this->response['error'] = $validator->errors();
+                return $this->getResponse("Incorrect input details.");
+            }
+
+            $file = File::on(connection: 'archive_mysql')->where('file_type', 'training_file')->first();
+            if (!$file) {
+                $this->status = 404;
+                return $this->getResponse("Training file not found.");
+            }
+
+            if (!is_string($request->settings)) {
+                $file->settings = json_encode($request->settings);
+            } else {
+                $file->settings = $request->settings;
+            }
+
+            $file->save();
+
+            $this->status = 201;
+            $this->response['data'] = $file;
+            return $this->getResponse("Training file updated successfully.");
+        } catch (\Throwable $th) {
+            $this->status = $th->getCode();
+            $this->response['message'] = $th->getMessage();
+            return $this->getResponse();
+        }
+    }
+
 
 
     public function getData()

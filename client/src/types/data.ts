@@ -148,6 +148,7 @@ export interface SpecificFinishedGood {
     rm_cost: number;
     total_cost: number;
     components: Component[];
+    desc?: string;
 }
 
 export interface AllFinishedGood {
@@ -192,7 +193,7 @@ export interface ProductEntry {
     monthYear: string;
   }
   
-  interface Product {
+  export interface Product {
     productName: string;
     cost: number;
   }
@@ -200,3 +201,20 @@ export interface ProductEntry {
     monthYear: string;
     products: Product[];
   }
+
+  export interface ReleaseNote {
+    note_id: number;
+    title: string;
+    version: string;
+    content: {
+        added: string[];
+        updated: string[];
+        removed: string[];
+    };
+    user_id: number;
+    created_at: string;
+    user: {
+        user_id: number;
+        name: string;
+    };
+}

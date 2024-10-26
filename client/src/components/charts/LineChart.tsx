@@ -65,9 +65,6 @@ const ProductCostChart: React.FC<ProductCostChartProps> = ({
         .split(" ")
         .map((item) => item.trim());
       const monthIndex = new Date(`${month} 1, ${year}`).getMonth() + 1;
-      console.log("Year selected: ", selectedYear);
-      console.log("Half selected: ", selectedHalf);
-      console.log("Month Indices: ", monthIndex);
 
       if (year === selectedYear) {
         if (selectedHalf === "First") {
@@ -83,8 +80,6 @@ const ProductCostChart: React.FC<ProductCostChartProps> = ({
   useEffect(() => {
     const prepareChartData = () => {
       const filteredData = filterDataByYearAndHalf();
-
-      console.log("This is filtered Data: ", filteredData);
 
       if (!filteredData || filteredData.length === 0) return;
 
@@ -126,10 +121,10 @@ const ProductCostChart: React.FC<ProductCostChartProps> = ({
   if (!chartData) {
     return (
       <div className="flex flex-col items-center justify-center animate-fadeIn">
-        <h2 className="text-4xl font-semibold text-gray-700 transition-transform transform hover:scale-105">
+        <h2 className="text-4xl font-semibold text-gray-700 transition-transform transform hover:scale-105 dark:text-white">
           No Data Available
         </h2>
-        <p className="mt-2 text-gray-500 text-2xl transition-transform transform hover:scale-105">
+        <p className="mt-2 text-gray-500 text-2xl transition-transform transform hover:scale-105 dark:text-white  ">
           Please select a year half to view the data.
         </p>
       </div>
@@ -137,7 +132,7 @@ const ProductCostChart: React.FC<ProductCostChartProps> = ({
   }
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full max-w-[700px]">
       <Line
         data={chartData}
         options={{
