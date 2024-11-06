@@ -92,35 +92,35 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({ className }) => {
     const handleDayClick = (day: number | null) => {
         if (day !== null) {
             const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
             setSelectedDate(clickedDate);
             const existingEvent = events.find(event => {
-                console.log('Comparing event:', event);
-                console.log('Event date:', event.date.getDate(), event.date.getMonth(), event.date.getFullYear());
-                console.log('Current date:', day, currentDate.getMonth(), currentDate.getFullYear());
                 return event.date.getDate() === day &&
                        event.date.getMonth() === currentDate.getMonth() &&
                        event.date.getFullYear() === currentDate.getFullYear();
             });
+
             if (existingEvent) {
                 if (!sysRoles?.includes(13)) {
                     setError('You are not authorized to view this event.');
                     return;
                 }
-
-                if (!sysRoles?.includes(15)) {
-                    setError('You are not authorized to edit this event.');
+                setSelectedEvent(existingEvent);
+                setIsModalOpen(true);
+            } else {
+                if (clickedDate < today) {
+                    setError('Cannot create events for past dates');
                     return;
                 }
-                console.log("Chosen Event: ", existingEvent);
-                setSelectedEvent(existingEvent);
-            } else {
                 if (!sysRoles?.includes(14)) {
                     setError('You are not authorized to create an event.');
                     return;
                 }
                 setSelectedEvent(null);
+                setIsModalOpen(true);
             }
-            setIsModalOpen(true);
         }
     };
 
@@ -145,10 +145,8 @@ const CustomCalendar: React.FC<CustomCalendarProps> = ({ className }) => {
 
         api.post('/auditlogs/logsaudit', auditData)
             .then(response => {
-                console.log('Audit log created successfully:', response.data);
             })
             .catch(error => {
-                console.error('Error logging audit:', error);
             });
         setIsModalOpen(false);
     };
